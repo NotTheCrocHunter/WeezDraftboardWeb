@@ -1,0 +1,30 @@
+/* Default cell colors */
+
+td {
+  background-color: white;
+
+}
+.rb {
+    background-color: blue;
+  }
+  .qb {
+    background-color: red;
+  }
+  .pk {
+    background-color: brown;
+  }
+  .wr {
+    background-color: green;
+  }
+  .te {
+    background-color: orange;
+  }
+  .def {
+    background-color: purple;
+  }
+  
+  /* Clicked cell color */
+  .clicked {
+    background-color: grey;
+  }
+  

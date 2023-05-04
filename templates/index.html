@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Fantasy Football Table</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/16.14.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/16.14.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <script>
+      // When a table cell is clicked
+      $('#fantasy-players td').click(function() {
+        // Toggle the clicked class
+        $(this).toggleClass('clicked');
+      });
+    </script>
+
+    <script type="text/babel">
+      class FantasyTable extends React.Component {
+        constructor(props) {
+          super(props);
+          this.state = { data: [] };
+        }
+
+        componentDidMount() {
+          fetch('/fantasy-data')
+            .then(res => res.json())
+            .then(data => this.setState({ data }));
+        }
+
+        render() {
+          return (
+            <div className="container">
+              <h1>Fantasy Football Table</h1>
+              <table className="striped centered">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Team</th>
+                    <th>Position</th>
+                    <th>Col 1</th>
+                    <th>Col 2</th>
+                    <th>Col 3</th>
+                    <th>Col 4</th>
+                    <th>Col 5</th>
+                    <th>Col 6</th>
+                    <th>Col 7</th>
+                    <th>Col 8</th>
+                    <th>Col 9</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {this.state.data.map(player => (
+                    <tr key={player.name_team_pos}>
+                      <td>{player.name}</td>
+                      <td>{player.team}</td>
+                      <td>{player.position}</td>
+                      <td className={`col-${player.position}`}>{player.name_team_pos}</td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                      <td className={`col-${player.position}`}></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+      }
+
+      ReactDOM.render(<FantasyTable />, document.getElementById('root'));
+    </script>
+  </body>
+</html>
