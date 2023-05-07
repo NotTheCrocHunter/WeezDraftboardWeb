@@ -2,30 +2,39 @@ from sleeper_wrapper import Players
 import psycopg2
 
 
-
 ####################
 # GET DATAFRAME
 ####################
 
 players = Players()
+all_players = players.all_players
 df = players.get_players_df()
-print(df.head())
+# Write df to CSV
+# csv_file = 'temp.csv'
+# fix df nulls
+# df.fillna('None', inplace=True)# write df to csv
+# df.to_csv(csv_file, index=False)
+# print(df.head())
 
 ####################
 # MAKE DB CONNECTION
 ####################
 
 conn = psycopg2.connect(
-    database='postgres',
+    database='weez_fantasy_nfl',
     user='postgres',
     password='docker',
     port='5432',
     host='localhost')
 
-conn.autocommit = True
+with conn:
+    with conn.cursor() as curs:
+        curs.execute('SELECT * FROM all_players')
+        print(curs)
+# conn.autocommit = True
 
 # Creating a cursor object
-cursor = conn.cursor()
+# cursor = conn.cursor()
 
 #####################################
 # BUILD THE CREATE TABLE statement
@@ -35,42 +44,36 @@ cursor = conn.cursor()
 table_name = 'all_players'
 columns = []
 s = df.dtypes
-print(s)
+print(s)  #col names and dtypes
 for column_name, dtype in s.items():
-    print(dtype)
     if column_name == 'player_id':
         columns.append(f"{column_name} VARCHAR(255) PRIMARY KEY")
+    elif column_name == 'active':
+        columns.append(f"{column_name} BOOL NULL")
     elif column_name in ['rotoworld_id', 'pandascore_id']:
-        columns.append(f"{column_name} VARCHAR(255) NULL,")
+        columns.append(f"{column_name} VARCHAR(255) NULL")
     elif column_name == 'fantasy_positions':
-        columns.append(f"{column_name} text[] NULL,")
+        columns.append(f"{column_name} text[] NULL")
     elif dtype == 'int64':
-        columns.append(f"{column_name} INT NULL,")
+        columns.append(f"{column_name} INT NULL")
     elif dtype == 'float64':
-        columns.append(f"{column_name} VARCHAR(255) NULL,")
+        columns.append(f"{column_name} VARCHAR(255) NULL")
     elif dtype == 'datetime64[ns]':
-        columns.append(f"{column_name} TIMESTAMP NULL,")
+        columns.append(f"{column_name} TIMESTAMP NULL")
 
     else:
-        columns.append(f"{column_name} VARCHAR(255) NULL,")
+        columns.append(f"{column_name} VARCHAR(255) NULL")
 
-column_str = '\n'.join(columns)
+column_str = ', '.join(columns)
 create_table_stmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_str});"
 print(create_table_stmt)
-cursor.execute(create_table_stmt)
+# cursor.execute(create_table_stmt)
 
 
 # Create temporary table in Postgres
 cursor.execute("CREATE TEMPORARY TABLE temp_all_players (LIKE all_players)")
 
-# Write df to CSV
-csv_file = 'temp.csv'
-# fix df nulls
-df.fillna('None', inplace=True)
-# allowed_positions = ['QB', 'TE', 'RB', 'WR', 'DEF', 'K']
-# filtered_df = df[df['fantasy_positions'].apply(lambda x: all(pos in allowed_positions for pos in x))]
-# write df to csv
-df.to_csv(csv_file, index=False)
+
 
 # Copy the data from the CSV file into the temporary table
 with open(csv_file, 'r') as f:
