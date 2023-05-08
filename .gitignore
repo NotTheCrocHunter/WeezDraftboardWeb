@@ -1,5 +1,6 @@
 venv/
 .env
+<<<<<<< HEAD
 sleeper_wrapper/__pycache__/__init__.cpython-310.pyc
 sleeper_wrapper/__pycache__/players.cpython-310.pyc
 sleeper_wrapper/__pycache__/__init__.cpython-310.pyc
@@ -8,3 +9,6 @@ sleeper_wrapper/__pycache__/players.cpython-310.pyc
 sleeper_wrapper/__pycache__/__init__.cpython-310.pyc
 sleeper_wrapper/__pycache__/players.cpython-310.pyc
 sleeper_wrapper/__pycache__/
+=======
+.idea/
+>>>>>>> 4edeff6afcba78d41bd73ec0a27d90a6b225dd18
