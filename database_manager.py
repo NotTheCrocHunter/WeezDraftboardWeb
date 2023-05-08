@@ -1,76 +1,120 @@
 from sleeper_wrapper import Players
 import psycopg2
+import psycopg2.sql
+from psycopg2.extras import Json, execute_values
+from psycopg2.extensions import AsIs, adapt
+import json
+
+class FFDBManager(Players):
+    def __init__(self):
+        super().__init__()
+
+    def create_all_players_table(self):
+
+        #####################################
+        # BUILD THE CREATE TABLE statement
+        #####################################
+        # make db connection
+        conn = psycopg2.connect(
+            database='players',
+            user='postgres',
+            password='docker',
+            port='5432',
+            host='localhost')
+        # Create the all_players table
+        table_name = 'all_players_test'
+        columns = []
+        s = self.players_df.dtypes
+        print(s)
+        for column_name, dtype in s.items():
+            print(dtype)
+            if column_name == 'player_id':
+                columns.append(f"{column_name} VARCHAR(255) PRIMARY KEY")
+            elif column_name in ['rotoworld_id', 'pandascore_id']:
+                columns.append(f"{column_name} VARCHAR(255) NULL")
+            elif column_name == 'fantasy_positions':
+                columns.append(f"{column_name} text[] NULL")
+            elif column_name == 'metadata':
+                columns.append(f"{column_name} JSONB NULL")
+            elif dtype == 'int64':
+                columns.append(f"{column_name} INT NULL")
+            elif dtype == 'float64':
+                columns.append(f"{column_name} VARCHAR(255) NULL")
+            elif dtype == 'datetime64[ns]':
+                columns.append(f"{column_name} TIMESTAMP NULL")
+
+            else:
+                columns.append(f"{column_name} VARCHAR(255) NULL")
+
+        column_str = ', '.join(columns)
+        create_table_stmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_str});"
+
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute(create_table_stmt)
+                # print(cursor.mogrify(create_table_stmt))
+        return create_table_stmt
+
+    def insert_all_players_records(self):
+        error_count = 0
+        success_count = 0
+        conn = psycopg2.connect(
+            database='players',
+            user='postgres',
+            password='docker',
+            port='5432',
+            host='localhost')
+        with conn:
+            with conn.cursor() as cursor:
+                for player in self.all_players:
+                    p = self.all_players[player]
+                    cols = p.keys()
+                    values = []
+                    update_values = []
+                    for c in cols:
+                        if type(p[c]) is dict:
+                            values.append(Json(p[c]))
+                            update_values.append(f"{c} = {Json(p[c])}")
+                        elif p[c] is not None:
+                            values.append(p[c])
+                            update_values.append(f"{c} = '{p[c]}'")
+                        elif p[c] is None:
+                            values.append(None)
+                            update_values.append(f"{c} = {None}")
+
+                    # values = [Json(p[c]) if type(p[c]) is dict else p[c] if p[c] is not None else None for c in cols]
+                    insert_statement = 'INSERT INTO all_players_test(%s) VALUES %s ' \
+                                       'ON CONFLICT (player_id) DO UPDATE SET %s'
+                    print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values), AsIs(", ".join(update_values)))))
+                    cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), AsIs(", ".join(update_values))))
+                    cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
+
+                    try:
+                        cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values)))
+                        success_count += 1
+                    except Exception as e:
+                        print(f"error {e} on player {player}")
+                        error_count += 1
+
+                print(f"error count: {error_count}")
+                print(f"Success count: {success_count}")
 
 
+"""
 ####################
 # GET DATAFRAME
 ####################
+"""
+ff = FFDBManager()
+ff.create_all_players_table()
+ff.insert_all_players_records()
+
 
 players = Players()
 all_players = players.all_players
-df = players.get_players_df()
-# Write df to CSV
-# csv_file = 'temp.csv'
-# fix df nulls
-# df.fillna('None', inplace=True)# write df to csv
-# df.to_csv(csv_file, index=False)
-# print(df.head())
-
-####################
-# MAKE DB CONNECTION
-####################
-
-conn = psycopg2.connect(
-    database='weez_fantasy_nfl',
-    user='postgres',
-    password='docker',
-    port='5432',
-    host='localhost')
-
-with conn:
-    with conn.cursor() as curs:
-        curs.execute('SELECT * FROM all_players')
-        print(curs)
-# conn.autocommit = True
-
-# Creating a cursor object
-# cursor = conn.cursor()
-
-#####################################
-# BUILD THE CREATE TABLE statement
-#####################################
-
-# Create the all_players table
-table_name = 'all_players'
-columns = []
-s = df.dtypes
-print(s)  #col names and dtypes
-for column_name, dtype in s.items():
-    if column_name == 'player_id':
-        columns.append(f"{column_name} VARCHAR(255) PRIMARY KEY")
-    elif column_name == 'active':
-        columns.append(f"{column_name} BOOL NULL")
-    elif column_name in ['rotoworld_id', 'pandascore_id']:
-        columns.append(f"{column_name} VARCHAR(255) NULL")
-    elif column_name == 'fantasy_positions':
-        columns.append(f"{column_name} text[] NULL")
-    elif dtype == 'int64':
-        columns.append(f"{column_name} INT NULL")
-    elif dtype == 'float64':
-        columns.append(f"{column_name} VARCHAR(255) NULL")
-    elif dtype == 'datetime64[ns]':
-        columns.append(f"{column_name} TIMESTAMP NULL")
-
-    else:
-        columns.append(f"{column_name} VARCHAR(255) NULL")
-
-column_str = ', '.join(columns)
-create_table_stmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_str});"
-print(create_table_stmt)
-# cursor.execute(create_table_stmt)
 
 
-# Create temporary table in Postgres
+"""# Create temporary table in Postgres
 cursor.execute("CREATE TEMPORARY TABLE temp_all_players (LIKE all_players)")
 
 
