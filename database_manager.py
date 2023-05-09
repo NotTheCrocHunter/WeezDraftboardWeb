@@ -55,6 +55,18 @@ class FFDBManager(Players):
                 # print(cursor.mogrify(create_table_stmt))
         return create_table_stmt
 
+    def select_wrs(self):
+        conn = psycopg2.connect(
+            database='players',
+            user='postgres',
+            password='docker',
+            port='5432',
+            host='localhost')
+        with conn:
+            with conn.cursor() as cursor:
+                select_stmt = 'SELECT * from public' \
+                              '...all_players_test WHERE '
+
     def insert_all_players_records(self):
         error_count = 0
         success_count = 0
@@ -77,18 +89,21 @@ class FFDBManager(Players):
                             update_values.append(f"{c} = {Json(p[c])}")
                         elif p[c] is not None:
                             values.append(p[c])
-                            update_values.append(f"{c} = '{p[c]}'")
+                            if p[c] != '':
+                                update_values.append(f"{c} = '{p[c]}'")
                         elif p[c] is None:
                             values.append(None)
-                            update_values.append(f"{c} = {None}")
+                            # skip the update_values here for nulls/nones
 
                     # values = [Json(p[c]) if type(p[c]) is dict else p[c] if p[c] is not None else None for c in cols]
+                    # This is the old update statement.  We are skipping for now
+                    # TODO add DO UPDATE SET %s to insert statement
+                    # old update_values join  AsIs(", ".join(update_values))
                     insert_statement = 'INSERT INTO all_players_test(%s) VALUES %s ' \
-                                       'ON CONFLICT (player_id) DO UPDATE SET %s'
-                    print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values), AsIs(", ".join(update_values)))))
-                    cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), AsIs(", ".join(update_values))))
-                    cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
-
+                                       'ON CONFLICT (player_id) DO NOTHING'
+                    # print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values),)))
+                    # cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
+                    # AsIs(", ".join(update_values))
                     try:
                         cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values)))
                         success_count += 1
@@ -106,9 +121,9 @@ class FFDBManager(Players):
 ####################
 """
 ff = FFDBManager()
-ff.create_all_players_table()
-ff.insert_all_players_records()
-
+# ff.create_all_players_table()
+# ff.insert_all_players_records()
+ff.select_wrs()
 
 players = Players()
 df = players.get_players_df()
