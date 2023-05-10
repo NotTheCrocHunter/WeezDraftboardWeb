@@ -10,7 +10,6 @@ class FFDBManager(Players):
     def __init__(self):
         # init the Players class
         super().__init__()
-
         # Connect to PostgreSQL server
         self.conn = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost",
                                      port="5432")
