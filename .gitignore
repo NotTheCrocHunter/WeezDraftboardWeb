@@ -1,6 +1,7 @@
 venv/
 .env
 <<<<<<< HEAD
+<<<<<<< HEAD
 sleeper_wrapper/__pycache__/__init__.cpython-310.pyc
 sleeper_wrapper/__pycache__/players.cpython-310.pyc
 sleeper_wrapper/__pycache__/__init__.cpython-310.pyc
@@ -12,3 +13,7 @@ sleeper_wrapper/__pycache__/
 =======
 .idea/
 >>>>>>> 4edeff6afcba78d41bd73ec0a27d90a6b225dd18
+=======
+.idea/
+/temp.csv
+>>>>>>> 06bb63513474d09e458a99e946a4b100e60ef937
