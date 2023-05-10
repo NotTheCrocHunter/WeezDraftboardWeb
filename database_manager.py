@@ -104,6 +104,7 @@ class FFDBManager(Players):
                     # print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values),)))
                     # cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
                     # AsIs(", ".join(update_values))
+
                     try:
                         cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values)))
                         success_count += 1
