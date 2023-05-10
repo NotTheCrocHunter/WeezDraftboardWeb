@@ -125,6 +125,7 @@ ff = FFDBManager()
 # ff.insert_all_players_records()
 ff.select_wrs()
 
+
 players = Players()
 df = players.get_players_df()
 all_players = players.all_players
