@@ -112,7 +112,7 @@ class FFDBManager(Players):
                         error_count += 1
 
                 print(f"error count: {error_count}")
-                print(f"Success count: {success_count}")
+                print(f"Success count: {success_count} ")
 
 
 """
