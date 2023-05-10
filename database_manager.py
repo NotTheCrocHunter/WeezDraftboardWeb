@@ -11,6 +11,7 @@ class FFDBManager(Players):
         # init the Players class
         super().__init__()
         # Connect to PostgreSQL server
+        # add pw to env
         self.conn = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost",
                                      port="5432")
         self.conn.autocommit = True
