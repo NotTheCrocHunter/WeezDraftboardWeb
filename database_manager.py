@@ -114,7 +114,8 @@ players = Players()
 all_players = players.all_players
 
 
-"""# Create temporary table in Postgres
+"""
+# Create temporary table in Postgres
 cursor.execute("CREATE TEMPORARY TABLE temp_all_players (LIKE all_players)")
 
 
@@ -149,7 +150,7 @@ print("Database has been created successfully !!");
 conn.close()
 
 
-
+"""
 
 
 # postgres_string = 'postgres://postgres:postgrespw@localhost:32768'
