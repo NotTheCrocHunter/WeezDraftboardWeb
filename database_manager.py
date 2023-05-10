@@ -5,9 +5,34 @@ from psycopg2.extras import Json, execute_values
 from psycopg2.extensions import AsIs, adapt
 import json
 
+
 class FFDBManager(Players):
     def __init__(self):
         super().__init__()
+        # Connect to PostgreSQL server
+        self.conn = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost",
+                                     port="5432")
+        self.conn.autocommit = True
+        self.cursor = self.conn.cursor()
+
+        # Create database "weez_fantasy_nfl" if it doesn't exist
+        self.cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'weez_fantasy_nfl'")
+        exists = self.cursor.fetchone()
+        if not exists:
+            self.cursor.execute("CREATE DATABASE weez_fantasy_nfl")
+
+            # Connect to "weez_fantasy_nfl" database
+            self.conn = psycopg2.connect(database="weez_fantasy_nfl", user="postgres", password="docker",
+                                         host="localhost", port="5432")
+            self.conn.autocommit = True
+            self.cursor = self.conn.cursor()
+
+            # Create "all_players" table if it doesn't exist
+            self.cursor.execute("SELECT to_regclass('public.all_players')")
+            exists = self.cursor.fetchone()[0]
+            if not exists:
+                print(self.cursor.mogrify(self.create_all_players_table()))
+                self.cursor.execute(self.create_all_players_table())
 
     def create_all_players_table(self):
 
@@ -16,22 +41,25 @@ class FFDBManager(Players):
         #####################################
         # make db connection
         conn = psycopg2.connect(
-            database='players',
+            database='weez_fantasy_nfl',
             user='postgres',
             password='docker',
             port='5432',
             host='localhost')
         # Create the all_players table
-        table_name = 'all_players_test'
+        table_name = 'all_players'
         columns = []
         s = self.players_df.dtypes
         print(s)
+        id_keys = [k for k in s.keys() if k[-2:] == "id"]
         for column_name, dtype in s.items():
             print(dtype)
             if column_name == 'player_id':
                 columns.append(f"{column_name} VARCHAR(255) PRIMARY KEY")
-            elif column_name in ['rotoworld_id', 'pandascore_id']:
-                columns.append(f"{column_name} VARCHAR(255) NULL")
+            elif column_name in id_keys:
+                columns.append(f"{column_name} VARCHAR(255) UNIQUE NULL")
+            elif column_name == 'search_rank':
+                columns.append(f"{column_name} INT NULL")
             elif column_name == 'fantasy_positions':
                 columns.append(f"{column_name} text[] NULL")
             elif column_name == 'metadata':
@@ -42,17 +70,16 @@ class FFDBManager(Players):
                 columns.append(f"{column_name} VARCHAR(255) NULL")
             elif dtype == 'datetime64[ns]':
                 columns.append(f"{column_name} TIMESTAMP NULL")
-
             else:
                 columns.append(f"{column_name} VARCHAR(255) NULL")
 
         column_str = ', '.join(columns)
         create_table_stmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_str});"
 
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute(create_table_stmt)
-                # print(cursor.mogrify(create_table_stmt))
+        # with conn:
+        #     with conn.cursor() as cursor:
+        #         cursor.execute(create_table_stmt)
+        #         print(cursor.mogrify(create_table_stmt))
         return create_table_stmt
 
     def select_wrs(self):
@@ -99,7 +126,7 @@ class FFDBManager(Players):
                     # This is the old update statement.  We are skipping for now
                     # TODO add DO UPDATE SET %s to insert statement
                     # old update_values join  AsIs(", ".join(update_values))
-                    insert_statement = 'INSERT INTO all_players_test(%s) VALUES %s ' \
+                    insert_statement = 'INSERT INTO all_players(%s) VALUES %s ' \
                                        'ON CONFLICT (player_id) DO NOTHING'
                     # print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values),)))
                     # cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
