@@ -16,4 +16,8 @@ sleeper_wrapper/__pycache__/
 =======
 .idea/
 /temp.csv
+<<<<<<< HEAD
 >>>>>>> 06bb63513474d09e458a99e946a4b100e60ef937
+=======
+sleeper_wrapper/__pycache__/
+>>>>>>> 0254eb0... Add database and table creation to __init__ statement.
