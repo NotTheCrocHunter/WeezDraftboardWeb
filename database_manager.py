@@ -4,7 +4,11 @@ import psycopg2.sql
 from psycopg2.extras import Json, execute_values
 from psycopg2.extensions import AsIs, adapt
 import json
+import logging
+import os
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class FFDBManager(Players):
     def __init__(self):
@@ -22,6 +26,7 @@ class FFDBManager(Players):
         
         # Insert/update for adding player records
         self.insert_all_players_records()
+
     def check_db_schema(self):
         self.cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'weez_fantasy_nfl'")
         exists = self.cursor.fetchone()
@@ -52,13 +57,9 @@ class FFDBManager(Players):
         #####################################
         # BUILD THE CREATE TABLE statement
         #####################################
-        # make db connection
-        conn = psycopg2.connect(
-            database='weez_fantasy_nfl',
-            user='postgres',
-            password='docker',
-            port='5432',
-            host='localhost')
+
+        print('starting create_all_players_table')
+
         # Create the all_players table
         table_name = 'all_players'
         columns = []
@@ -100,10 +101,11 @@ class FFDBManager(Players):
         pass
     
     def see_all_players(self):
-        # view all ff relevant players
+        # view all ff relevant players from all players where position is in ['QB', 'RB', 'WR', 'TE]
         pass
 
     def insert_all_players_records(self):
+        print('starting all player records insert')
         error_count = 0
         success_count = 0
 
@@ -143,6 +145,84 @@ class FFDBManager(Players):
 
         print(f"error count: {error_count}")
         print(f"Success count: {success_count} ")
+
+    def insert_all_players_records_new(self):
+        print('starting all player records insert')
+        error_count = 0
+        success_count = 0
+
+        # Extract the column names from the first player
+        first_player = next(iter(self.all_players.values()))
+        cols = list(first_player.keys())
+
+        # Extract the data for all players
+        data = []
+        for player in self.all_players.values():
+            row = []
+            print(player)
+            for col in cols:
+                if type(player[col]) is dict:
+                    row.append(Json(player[col]))
+                else:
+                    row.append(player[col])
+
+            data.append(row)
+            print(row)
+        # Construct the INSERT statement
+        insert_statement = 'INSERT INTO all_players (%s) VALUES %%s ON CONFLICT (player_id) DO NOTHING' % ", ".join(
+            cols)
+        print(self.cursor.mogrify(insert_statement))
+        # Execute the INSERT statement with execute_values
+        try:
+            execute_values(self.cursor, insert_statement, data)
+            success_count = len(data)
+        except Exception as e:
+            print(f"error {e} on players insert")
+            error_count = len(data)
+
+        print(f"error count: {error_count}")
+        print(f"Success count: {success_count} ")
+
+    def check_db_schema_new(self):
+        if not self._database_exists("weez_fantasy_nfl"):
+            logger.info("Creating weez_fantasy_nfl database")
+            self._execute("CREATE DATABASE weez_fantasy_nfl")
+
+        self.conn = psycopg2.connect(
+            database="weez_fantasy_nfl",
+            user="postgres",
+            password="docker",
+            host="localhost",
+            port="5432",
+        )
+        self.conn.autocommit = True
+        self.cursor = self.conn.cursor()
+
+        self._create_table_if_not_exists("all_players", self._get_all_players_columns())
+
+    def _database_exists(self, database_name):
+        self.cursor.execute(
+            "SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", (database_name,)
+        )
+        return bool(self.cursor.fetchone())
+
+    def _create_table_if_not_exists(self, table_name, columns):
+        if not self._table_exists(table_name):
+            logger.info(f"Creating {table_name} table")
+            create_table_stmt = self.create_all_players_table()  # f"CREATE TABLE {table_name} ({columns})"
+            self._execute(create_table_stmt)
+
+    def _table_exists(self, table_name):
+        self.cursor.execute(f"SELECT to_regclass('public.{table_name}')")
+        return bool(self.cursor.fetchone())
+
+    def _get_all_players_columns(self):
+        column_types = [
+            ("player_id", "VARCHAR(255) PRIMARY KEY"),
+            ("search_rank", "INT"),
+            ("full_name", "VARCHAR(255)"),
+            ("first_name", "VARCHAR(255)"),
+            ("last_name", "VARCHAR(255)")]
 
 
 """
