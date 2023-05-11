@@ -17,24 +17,35 @@ class FFDBManager(Players):
         self.conn.autocommit = True
         self.cursor = self.conn.cursor()
 
-        # Create database "weez_fantasy_nfl" if it doesn't exist
+        # Check DB Schema# Create database "weez_fantasy_nfl" if it doesn't exist
+        self.check_db_schema()
+        
+        # Insert/update for adding player records
+        self.insert_all_players_records()
+    def check_db_schema(self):
         self.cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'weez_fantasy_nfl'")
         exists = self.cursor.fetchone()
         if not exists:
+            print('Creating weez_fantasy_nfl database')
             self.cursor.execute("CREATE DATABASE weez_fantasy_nfl")
+        else:
+            print('weez_fantasy_nfl database exists, connecting now')
+        # Connect to "weez_fantasy_nfl" database
+        self.conn = psycopg2.connect(database="weez_fantasy_nfl", user="postgres", password="docker",
+                                        host="localhost", port="5432")
+        self.conn.autocommit = True
+        self.cursor = self.conn.cursor()
 
-            # Connect to "weez_fantasy_nfl" database
-            self.conn = psycopg2.connect(database="weez_fantasy_nfl", user="postgres", password="docker",
-                                         host="localhost", port="5432")
-            self.conn.autocommit = True
-            self.cursor = self.conn.cursor()
-
-            # Create "all_players" table if it doesn't exist
-            self.cursor.execute("SELECT to_regclass('public.all_players')")
-            exists = self.cursor.fetchone()[0]
-            if not exists:
-                print(self.cursor.mogrify(self.create_all_players_table()))
-                self.cursor.execute(self.create_all_players_table())
+        # Create "all_players" table if it doesn't exist
+        print('Checking if all_players table exists')
+        self.cursor.execute("SELECT to_regclass('public.all_players')")
+        exists = self.cursor.fetchone()[0]
+        if not exists:
+            print('all_players table does not exist')
+            print(self.cursor.mogrify(self.create_all_players_table()))
+            self.cursor.execute(self.create_all_players_table())
+        else:
+            print('All players table exists')
 
     def create_all_players_table(self):
 
@@ -52,14 +63,14 @@ class FFDBManager(Players):
         table_name = 'all_players'
         columns = []
         s = self.players_df.dtypes
-        print(s)
+        # print(s)
         id_keys = [k for k in s.keys() if k[-2:] == "id"]
         for column_name, dtype in s.items():
-            print(dtype)
+            # print(dtype)
             if column_name == 'player_id':
                 columns.append(f"{column_name} VARCHAR(255) PRIMARY KEY")
             elif column_name in id_keys:
-                columns.append(f"{column_name} VARCHAR(255) UNIQUE NULL")
+                columns.append(f"{column_name} VARCHAR(255) NULL")
             elif column_name == 'search_rank':
                 columns.append(f"{column_name} INT NULL")
             elif column_name == 'fantasy_positions':
@@ -85,64 +96,53 @@ class FFDBManager(Players):
         return create_table_stmt
 
     def select_wrs(self):
-        conn = psycopg2.connect(
-            database='players',
-            user='postgres',
-            password='docker',
-            port='5432',
-            host='localhost')
-        with conn:
-            with conn.cursor() as cursor:
-                select_stmt = 'SELECT * from public' \
-                              '...all_players_test WHERE '
+        # make wr search
+        pass
+    
+    def see_all_players(self):
+        # view all ff relevant players
+        pass
 
     def insert_all_players_records(self):
         error_count = 0
         success_count = 0
-        conn = psycopg2.connect(
-            database='players',
-            user='postgres',
-            password='docker',
-            port='5432',
-            host='localhost')
-        with conn:
-            with conn.cursor() as cursor:
-                for player in self.all_players:
-                    p = self.all_players[player]
-                    cols = p.keys()
-                    values = []
-                    update_values = []
-                    for c in cols:
-                        if type(p[c]) is dict:
-                            values.append(Json(p[c]))
-                            update_values.append(f"{c} = {Json(p[c])}")
-                        elif p[c] is not None:
-                            values.append(p[c])
-                            if p[c] != '':
-                                update_values.append(f"{c} = '{p[c]}'")
-                        elif p[c] is None:
-                            values.append(None)
-                            # skip the update_values here for nulls/nones
 
-                    # values = [Json(p[c]) if type(p[c]) is dict else p[c] if p[c] is not None else None for c in cols]
-                    # This is the old update statement.  We are skipping for now
-                    # TODO add DO UPDATE SET %s to insert statement
-                    # old update_values join  AsIs(", ".join(update_values))
-                    insert_statement = 'INSERT INTO all_players(%s) VALUES %s ' \
-                                       'ON CONFLICT (player_id) DO NOTHING'
-                    # print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values),)))
-                    # cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
-                    # AsIs(", ".join(update_values))
+        for player in self.all_players:
+            p = self.all_players[player]
+            cols = p.keys()
+            values = []
+            update_values = []
+            for c in cols:
+                if type(p[c]) is dict:
+                    values.append(Json(p[c]))
+                    update_values.append(f"{c} = {Json(p[c])}")
+                elif p[c] is not None:
+                    values.append(p[c])
+                    if p[c] != '':
+                        update_values.append(f"{c} = '{p[c]}'")
+                elif p[c] is None:
+                    values.append(None)
+                    # skip the update_values here for nulls/nones
 
-                    try:
-                        cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values)))
-                        success_count += 1
-                    except Exception as e:
-                        print(f"error {e} on player {player}")
-                        error_count += 1
+            # values = [Json(p[c]) if type(p[c]) is dict else p[c] if p[c] is not None else None for c in cols]
+            # This is the old update statement.  We are skipping for now
+            # TODO add DO UPDATE SET %s to insert statement
+            # old update_values join  AsIs(", ".join(update_values))
+            insert_statement = 'INSERT INTO all_players(%s) VALUES %s ' \
+                                'ON CONFLICT (player_id) DO NOTHING'
+            # print(cursor.mogrify(insert_statement, (AsIs(", ".join(cols)), tuple(values),)))
+            # cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values), tuple(update_values)))
+            # AsIs(", ".join(update_values))
 
-                print(f"error count: {error_count}")
-                print(f"Success count: {success_count} ")
+            try:
+                self.cursor.execute(insert_statement, (AsIs(", ".join(cols)), tuple(values)))
+                success_count += 1
+            except Exception as e:
+                print(f"error {e} on player {player}")
+                error_count += 1
+
+        print(f"error count: {error_count}")
+        print(f"Success count: {success_count} ")
 
 
 """
