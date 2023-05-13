@@ -9,9 +9,12 @@ SCORING_TYPES = ["ppr", "std", "custom"]
 
 
 class Stats(BaseApi):
-    def __init__(
-            self, season=2021, season_type="regular", position_list=["QB", "RB", "WR", "TE", "DEF", "K"],
-            projections=None, **kwargs):
+    def __init__(self,
+                 season=2021,
+                 season_type="regular",
+                 position_list=("QB", "RB", "WR", "TE", "DEF", "K"),
+                 projections=None,
+                 **kwargs):
         self.season = season
         self.season_type = season_type
         self.position_list = position_list

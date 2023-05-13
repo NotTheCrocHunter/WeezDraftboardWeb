@@ -97,12 +97,13 @@ class FFDBManager(Players):
         return create_table_stmt
 
     def select_wrs(self):
-        # make wr search
         pass
     
     def see_all_players(self):
         # view all ff relevant players from all players where position is in ['QB', 'RB', 'WR', 'TE]
         pass
+        self.cursor.execute("SELECT * FROM all_players")
+        return self.cursor.fetchall()
 
     def insert_all_players_records(self):
         print('starting all player records insert')
@@ -233,7 +234,7 @@ class FFDBManager(Players):
 ff = FFDBManager()
 # ff.create_all_players_table()
 # ff.insert_all_players_records()
-ff.select_wrs()
+all_players_postgres = ff.see_all_players()
 
 players = Players()
 df = players.get_players_df()
