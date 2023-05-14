@@ -4,24 +4,27 @@ from sleeper_wrapper.players import Players
 import json
 from pathlib import Path
 import pandas as pd
+import time
 from operator import itemgetter, attrgetter, getitem
 SCORING_TYPES = ["ppr", "std", "custom"]
 
 
 class Stats(BaseApi):
     def __init__(self,
-                 season=2021,
+                 season=None,
                  season_type="regular",
                  position_list=("QB", "RB", "WR", "TE", "DEF", "K"),
                  projections=None,
+                 calc_custom_scoring=False,
                  **kwargs):
         self.season = season
         self.season_type = season_type
         self.position_list = position_list
-        self.vols_baseline_ranks = {'RB': 24, 'QB': 24, 'WR': 36, 'TE': 12, 'K': 12, 'DEF': 12}
-        self.vols_baseline_scores = {}
-        self.vorp_baseline_ranks = {'RB': 60, 'QB': 32, 'WR': 60, 'TE': 16, 'K': 12, 'DEF': 12}
-        self.vols_baseline_scores = {}
+        if calc_custom_scoring:
+            self.vols_baseline_ranks = {'RB': 24, 'QB': 24, 'WR': 36, 'TE': 12, 'K': 12, 'DEF': 12}
+            self.vols_baseline_scores = {}
+            self.vorp_baseline_ranks = {'RB': 60, 'QB': 32, 'WR': 60, 'TE': 16, 'K': 12, 'DEF': 12}
+            self.vols_baseline_scores = {}
         self.scoring_settings = kwargs.get("scoring_settings")
         self.week_start = kwargs.get("week_start")
         self.week_stop = kwargs.get("week_stop")
@@ -42,8 +45,9 @@ class Stats(BaseApi):
             return self.get_week_stats()
         elif self.projections:
             self.get_projections()
-        else:
-            return self.get_year_stats()
+        elif self.season:
+            return self.get_year_stats(self.season)
+
     def get_projections(self):
         dir_path = Path("data/projections")
         file_path = Path("data/projections/NFLDK2022_CS_ClayProjections2022.xlsx")
@@ -51,7 +55,8 @@ class Stats(BaseApi):
         for pos in self.position_list:
             pass
 
-    def get_year_stats(self):
+    def get_year_stats(self, season):
+        self.season = season
         dir_path = Path(f'data/stats/{self.season}')
         file_path = Path(f'data/stats/{self.season}/all_stats_{self.season}.json')
         try:
@@ -70,26 +75,29 @@ class Stats(BaseApi):
                 self.get_custom_score()
                 self.add_rank_custom("custom")
                 self.add_pos_rank_custom("custom")
-            self.get_vols_baseline_players()
-            self.calc_vols_score()
-            self.get_vorp_baseline_players()
-            self.calc_vorp_score()
+                self.get_vols_baseline_players()
+                self.calc_vols_score()
+                self.get_vorp_baseline_players()
+                self.calc_vorp_score()
         return self.stats
 
     def get_week_stats(self):
         for week in range(self.week_start, self.week_stop+1):
             dir_path = Path(f'data/stats/{self.season}')
-            file_path = Path(f'data/stats/{self.season}/week_{week:02d}_stats_{self.season}.json')
+            file_path = Path(f'data/stats/{self.season}/{self.season}_week_{week:02d}.json')
             try:
                 with open(file_path, "r") as json_file:
                     self.stats = json.load(json_file)
+                    print(f"{file_path} found locally.")
             except FileNotFoundError:
-                print("local path and file not found, making API call")
+                print(f"local path and file not found, making API call for {file_path}")
                 dir_path.mkdir(parents=True, exist_ok=True)
                 self.stats = self._call(f"{self._base_url}/{self.season_type}/{self.season}/{week}")
                 self.map_player_info()
                 with open(file_path, 'w') as data_file:
                     json.dump(self.stats, data_file, indent=4)
+                print('API week call complete, sleeping 1 second')
+                time.sleep(1)
             finally:
                 self.trim_to_positions()
                 self.fix_empty_scores()
@@ -97,13 +105,14 @@ class Stats(BaseApi):
                 self.week_stats_list.append(self.stats)
                 if self.scoring_settings:
                     self.get_custom_score()
-                self.add_rank_custom()
-                self.add_pos_rank_custom()
-                self.get_vols_baseline_players()
-                self.calc_vols_score()
-                self.get_vorp_baseline_players()
-                self.calc_vorp_score()
-                self.get_consistency_ranks()
+                    self.add_rank_custom()
+                    self.add_pos_rank_custom()
+                    self.get_vols_baseline_players()
+                    self.calc_vols_score()
+                    self.get_vorp_baseline_players()
+                    self.calc_vorp_score()
+                    self.get_consistency_ranks()
+
         self.get_stats_totals()
         self.get_stats_average()
         # pdb.set_trace()
