@@ -1,0 +1,156 @@
+* {
+  box-sizing: border-box;
+}
+
+.draftboard .cell {
+  min-width: 120px;
+  min-height: 50px;
+  border-radius: 8px;
+  background: #d0d8e6;
+  margin: 0 1px 2px 1px;
+  box-sizing: border-box;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  padding: 0px 0px 0px 8px;
+  justify-content: flex-start;
+  font-family: "Muli";
+}
+
+.draftboard-table-container {
+  background: #102131;
+}
+
+.undrafted-cell {
+  background: whitesmoke;
+}
+
+.cell-container {
+  position: relative;
+  width: 120px;
+  border-radius: 10%;
+  transition: background-color 0.1s;
+  padding: 2px 0px 0px 2px;
+}
+
+.cell-container:hover {
+  background-color: lightgray;
+}
+
+.cell-container.clicked {
+  background-color: gray;
+}
+
+.player-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.RB {
+  background: blue;
+}
+
+.WR {
+  background: blueviolet;
+}
+
+.QB {
+  background: orange;
+}
+
+.TE {
+  background: green;
+}
+
+.PK {
+  background: yellow;
+}
+
+.DEF {
+  background: red;
+}
+
+.draftboard-container {
+  background: #d0d8e6;
+}
+
+body {
+  height: 100%;
+  overflow: auto;
+  font-family: "Lato", Arial, Helvetica, sans-serif;
+  background: #102131;
+}
+
+.draftboard-header {
+  background: #bed3e7;
+}
+
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  font-weight: inherit;
+  font-style: inherit;
+  font-family: inherit;
+  font-size: 100%;
+  vertical-align: middle;
+}

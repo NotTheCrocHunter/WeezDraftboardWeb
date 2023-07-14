@@ -6,9 +6,19 @@ from psycopg2.extensions import AsIs, adapt
 import json
 import logging
 import os
+import django
+from dotenv import load_dotenv
+from fuzzywuzzy import fuzz
+# from api.models import Player
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+dotenv_path = os.path.join(os.path.dirname(__file__), 'WeezDraftboardWeb', '.env')
+load_dotenv(dotenv_path)
+postgres_pw = os.getenv('POSTGRES_PASSWORD')
+# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'WeezDraftboardWeb.settings')
+# django.setup()
+
 
 class FFDBManager(Players):
     def __init__(self):
@@ -16,7 +26,7 @@ class FFDBManager(Players):
         super().__init__()
         # Connect to PostgreSQL server
         # add pw to env
-        self.conn = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost",
+        self.conn = psycopg2.connect(database="postgres", user="postgres", password=postgres_pw, host="localhost",
                                      port="5432")
         self.conn.autocommit = True
         self.cursor = self.conn.cursor()
@@ -25,7 +35,7 @@ class FFDBManager(Players):
         self.check_db_schema()
         
         # Insert/update for adding player records
-        self.insert_all_players_records()
+        # self.insert_all_players_records()
 
     def check_db_schema(self):
         self.cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'weez_fantasy_nfl'")
@@ -36,7 +46,7 @@ class FFDBManager(Players):
         else:
             print('weez_fantasy_nfl database exists, connecting now')
         # Connect to "weez_fantasy_nfl" database
-        self.conn = psycopg2.connect(database="weez_fantasy_nfl", user="postgres", password="docker",
+        self.conn = psycopg2.connect(database="weez_fantasy_nfl", user="postgres", password=postgres_pw,
                                         host="localhost", port="5432")
         self.conn.autocommit = True
         self.cursor = self.conn.cursor()
@@ -90,10 +100,6 @@ class FFDBManager(Players):
         column_str = ', '.join(columns)
         create_table_stmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_str});"
 
-        # with conn:
-        #     with conn.cursor() as cursor:
-        #         cursor.execute(create_table_stmt)
-        #         print(cursor.mogrify(create_table_stmt))
         return create_table_stmt
 
     def select_wrs(self):
@@ -101,10 +107,30 @@ class FFDBManager(Players):
     
     def see_all_players(self):
         # view all ff relevant players from all players where position is in ['QB', 'RB', 'WR', 'TE]
-        pass
         self.cursor.execute("SELECT * FROM all_players")
+        
         return self.cursor.fetchall()
+    
+    def see_relevant_players(self):
+        # view all ff relevant players from all players where position is in ['QB', 'RB', 'WR', 'TE]
+        positions = ['QB', 'RB', 'WR', 'TE', 'K', 'PK', 'DEF']
+        query = "SELECT * FROM all_players WHERE position IN %s"
+        self.cursor.execute(query, (tuple(positions), )) # LIMIT 2")
+        return self.cursor.fetchall()
+    
+    def select_db_for_matching(self):
+        # view all ff relevant players from all players only grabbing the fields for matching, where position is in ['QB', 'RB', 'WR', 'TE]
+        positions = ['QB', 'RB', 'WR', 'TE', 'K', 'PK', 'DEF']
+        query = "SELECT full_name, position, team, player_id FROM all_players WHERE position IN %s"
+        self.cursor.execute(query, (tuple(positions), )) # LIMIT 2")
+        cols = [desc[0] for desc in self.cursor.description]
+        return cols, self.cursor.fetchall()
 
+    def get_all_columns(self):
+        self.cursor.execute("SELECT * FROM all_players")
+        cols = [desc[0] for desc in self.cursor.description]
+        return cols
+    
     def insert_all_players_records(self):
         print('starting all player records insert')
         error_count = 0
@@ -225,6 +251,118 @@ class FFDBManager(Players):
             ("first_name", "VARCHAR(255)"),
             ("last_name", "VARCHAR(255)")]
 
+    def fuzzy_match_sources(self, json_data, db_data):
+        # list to store unmatched players
+        unmatched_players = []
+
+        # Iterate over the JSON data and update the matching records in the database
+        for json_player in json_data:
+            match_found = False
+
+            for db_player in db_data[1]:
+                # Perform fuzzy matching on Name, Position, and Team values
+                name_match = fuzz.partial_ratio(json_player['name'], db_player[0])
+                position_match = fuzz.partial_ratio(json_player['position'], db_player[1])
+                team_match = fuzz.partial_ratio(json_player['team'], db_player[2])
+                sleeper_id = db_player[3]
+
+                # Adjust the matching criteria as per your requirement
+                if name_match >= 80 and position_match >= 80 and team_match >= 80: 
+                    # Update the matched record in the database
+                    print(f'Match with team on {json_player} and {db_player}')
+                    match_found = True
+                     # UPDATE the all_players table
+                    self.cursor.execute("UPDATE all_players SET ffcalc_id = %s, draft_position = %s WHERE player_id = %s", (json_player['ffcalc_id'], json_player['draft_position'], db_player[3]))
+                    # add the sleeper id to the json_data 
+                    json_player['sleeper_id'] = sleeper_id
+                    break
+
+                elif name_match >= 78 and position_match >= 80:
+                    # Update the matched record in the database
+                    print(f'Match with no team on {json_player} and {db_player}')
+                    match_found = True
+                     # UPDATE DB
+                    # self.cursor.execute("UPDATE all_players SET ffcalc_id = %s, draft_position = %s WHERE player_id = %s", (json_player['ffcalc_id'], json_player['draft_position'], db_player[3]))
+                    # add the sleeper id to the json_data 
+                    json_player['sleeper_id'] = sleeper_id
+                    break
+
+                elif json_player['position'] == 'DEF':
+                    print('Defense found.')
+                    # FIND DEFENSES in DB
+                   
+                    match_found = True
+                    # UPDATE DB
+                    # self.cursor.execute("UPDATE all_players SET ffcalc_id = %s, draft_position = %s WHERE player_id = %s", 
+                    #                     (json_player['ffcalc_id'], json_player['draft_position'], json_player['position']))
+                    json_player['sleeper_id'] = json_player['team']
+                    break
+         
+            if not match_found:
+                unmatched_players.append(json_player)
+                
+
+        print(unmatched_players)
+        return json_data
+
+    def update_adp_from_json(self):
+        """
+        Original method attempting to load ADP data into the database.  
+        Now I'm using it as a springboard to create the django fixture in create_adp_fixture.
+        """
+        
+        # Load the JSON data
+        with open ('data/adp.json') as file:
+            adp_data = json.load(file)
+        # Load the database matching data
+        db_data = self.select_db_for_matching()
+        cols = self.get_all_columns()
+
+        # Check if desired columns exist in all_players table and add if not
+        if 'ffcalc_id' not in cols:
+            # Add ffcalc_id column to the table
+            self.cursor.execute("ALTER TABLE all_players ADD COLUMN ffcalc_id CHAR(10)")
+        else:
+            print('ffcalc in COLS')
+
+        for index, player in enumerate(adp_data['players']):
+            player['draft_position'] = index + 1
+            player['ffcalc_id'] = player.pop('player_id')
+            if player['team'] == 'JAX':
+                player['team'] = 'JAC'
+            if player['name'] == 'Gabriel Davis':
+                player['name'] = 'Gabe Davis'
+        matches = self.fuzzy_match_sources(json_data=adp_data['players'], db_data=db_data)
+        # print(matches)
+        return adp_data['players']
+    
+    def create_adp_json_to_fixture(self):
+        data = self.update_adp_from_json()
+        fixture_data = []
+
+        for player in data:
+            fixture_data.append({
+                "model": "api.adp",
+                "fields": {
+                    "player_id": player["sleeper_id"],
+                    "name": player["name"],
+                    "position": player["position"],
+                    "team": player["team"],
+                    "adp": player["adp"],
+                    "bye": player["bye"],
+                    "draft_position": player["draft_position"],
+                    "ffcalc_id": player["ffcalc_id"],
+                    "adp_formatted": player["adp_formatted"],
+                    "times_drafted": player["times_drafted"],
+                    "high": player["high"],
+                    "low": player["low"],
+                    "stdev": player["stdev"],
+                }
+            })
+        fixture_file = "WeezDraftboardWeb/api/fixtures/adp_fixtures.json"
+        with open(fixture_file, "w") as f:
+            json.dump(fixture_data, f, indent=4)
+        pass
 
 """
 ####################
@@ -234,52 +372,10 @@ class FFDBManager(Players):
 ff = FFDBManager()
 # ff.create_all_players_table()
 # ff.insert_all_players_records()
-all_players_postgres = ff.see_all_players()
-
+#all_players_postgres = ff.see_relevant_players()
+ff.create_adp_json_to_fixture()
+print(player_list)
 players = Players()
 df = players.get_players_df()
 all_players = players.all_players
 
-
-"""# Create temporary table in Postgres
-cursor.execute("CREATE TEMPORARY TABLE temp_all_players (LIKE all_players)")
-
-# Write df to CSV
-csv_file = 'temp.csv'
-# fix df nulls
-df.fillna('None', inplace=True)
-# allowed_positions = ['QB', 'TE', 'RB', 'WR', 'DEF', 'K']
-# filtered_df = df[df['fantasy_positions'].apply(lambda x: all(pos in allowed_positions for pos in x))]
-# write df to csv
-df.to_csv(csv_file, index=False)
-
-# Copy the data from the CSV file into the temporary table
-with open(csv_file, 'r') as f:
-    cursor.copy_from(f, 'temp_all_players', sep=',')
-
-# Insert the data from the temporary table into the main table
-cursor.execute("INSERT INTO all_players SELECT * FROM temp_all_players ON CONFLICT DO NOTHING")
-
-# Commit the changes and close the cursor and connection
-
-
-# query to SELECT from a database
-sql = ''' SELECT * from all_players  ''';
-# need sql query to create the table if it doesn't exist and add the players to it
-
-
-# executing above query
-cursor.execute(sql)
-rows = cursor.fetchall()
-
-# print the results
-for row in rows:
-    print(row)
-
-print("Database has been created successfully !!");
-
-# Closing the connection
-conn.close()
-
-"""# postgres_string = 'postgres://postgres:postgrespw@localhost:32768'
-# docker_string = 'docker run --name fantasy-postgres-db -e POSTGRES_PASSWORD=docker -p 5432:5432 -d postgres'
