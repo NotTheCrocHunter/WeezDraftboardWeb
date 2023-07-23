@@ -22,3 +22,9 @@ sleeper_wrapper/__pycache__/
 =======
 sleeper_wrapper/__pycache__/
 >>>>>>> 0254eb0... Add database and table creation to __init__ statement.
+WeezDraftboardWeb/WeezDraftboardWeb/__pycache__/__init__.cpython-311.pyc
+.gitignore
+WeezDraftboardWeb/WeezDraftboardWeb/__pycache__/settings.cpython-311.pyc
+.gitignore
+WeezDraftboardWeb/WeezDraftboardWeb/__pycache__/wsgi.cpython-311.pyc
+WeezDraftboardWeb/WeezDraftboardWeb/__pycache__/urls.cpython-311.pyc
